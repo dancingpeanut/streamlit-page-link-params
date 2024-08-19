@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import time
 
 import streamlit as st
 from streamlit.errors import StreamlitAPIException
@@ -15,6 +16,7 @@ from streamlit_js_callback import streamlit_js_callback
 _CONTAINER_CLASS = "page-link-d78avs"
 _SESSION_STATE_KEY = "__streamlit-page-params"
 _SESSION_STATE_JUMP_DATA = f"{_SESSION_STATE_KEY}.page_params"
+_JUMP_COMPONENT_KEY = f"{_SESSION_STATE_KEY}.{time.time()}"
 
 
 def _page_link_style():
@@ -112,7 +114,8 @@ def _page_link_style():
 
 
 @st.fragment
-def _listen_jump(key=None):
+def _listen_jump():
+    global _JUMP_COMPONENT_KEY
     jump_target = streamlit_js_callback("""
     function findParentWithClass(element, classNameFragment) {
         while (element) {
@@ -136,10 +139,10 @@ def _listen_jump(key=None):
                 if (item.getAttribute('data-listen') !== 'true') {
                     item.setAttribute('data-listen', 'true');
                     // console.log("add event", item);
-                    item.addEventListener('click', (e) => {
+                    item.querySelector('a').addEventListener('click', (e) => {
                         // console.log("click", e.target);
                         const targetElement = findParentWithClass(e.target, 'page-link-d78avs');
-                        console.log("page element", targetElement.getAttribute('data-page'), targetElement)
+                        // console.log("page element", targetElement.getAttribute('data-page'), targetElement)
                         sendMessage(targetElement.getAttribute('data-page'))
                     })
                 }
@@ -147,32 +150,37 @@ def _listen_jump(key=None):
             await sleep(500)
         }
     })()
-    """, key=key)
+    """, key=_JUMP_COMPONENT_KEY)
     if jump_target:
         jump_data = json.loads(base64.b64decode(jump_target))
-        logging.debug(f"Jump to page: `{jump_data}`")
+        logging.info(f"Jump to page: `{jump_data}`")
         st.session_state[_SESSION_STATE_JUMP_DATA] = jump_data
+        _JUMP_COMPONENT_KEY = f"{_SESSION_STATE_KEY}.{time.time()}"
         st.switch_page(jump_data["path"])
+
+
+def _set_query_params(remove_jump_data=False):
+    jump_data = st.session_state.get(_SESSION_STATE_JUMP_DATA)
+    if jump_data and jump_data["params"] is not None:
+        ctx = get_script_run_ctx()
+        current_page_hash = str(ctx.pages_manager.get_current_page_script_hash())
+        if current_page_hash == jump_data["hash"]:
+            logging.info(f"Jump by page link params, {jump_data}")
+            st.query_params.from_dict(jump_data["params"])
+        if remove_jump_data:
+            del st.session_state[_SESSION_STATE_JUMP_DATA]
 
 
 @render_interceptor("before")
 def _before():
     _page_link_style()
-    jump_data = st.session_state.get(_SESSION_STATE_JUMP_DATA)
-    if jump_data and jump_data["params"] is not None:
-        del st.session_state[_SESSION_STATE_JUMP_DATA]
-        ctx = get_script_run_ctx()
-        current_page_hash = str(ctx.pages_manager.get_current_page_script_hash())
-        if current_page_hash == jump_data["hash"]:
-            logging.debug(f"Jump by page link params, {jump_data}")
-            st.query_params.from_dict(jump_data["params"])
+    _set_query_params()
 
 
 @render_interceptor("after")
 def _after():
-    ctx = get_script_run_ctx()
-    if "page_link_jump" not in ctx.widget_user_keys_this_run:
-        _listen_jump("page_link_jump")
+    _listen_jump()
+    _set_query_params(remove_jump_data=True)
 
 
 def init_():
