@@ -139,11 +139,15 @@ def _listen_jump():
                 if (item.getAttribute('data-listen') !== 'true') {
                     item.setAttribute('data-listen', 'true');
                     // console.log("add event", item);
+                    let notClick = true;
                     item.querySelector('a').addEventListener('click', (e) => {
-                        // console.log("click", e.target);
-                        const targetElement = findParentWithClass(e.target, 'page-link-d78avs');
-                        // console.log("page element", targetElement.getAttribute('data-page'), targetElement)
-                        sendMessage(targetElement.getAttribute('data-page'))
+                        if (notClick) {
+                            notClick = false;
+                            console.log("click", e.target);
+                            const targetElement = findParentWithClass(e.target, 'page-link-d78avs');
+                            // console.log("page element", targetElement.getAttribute('data-page'), targetElement)
+                            sendMessage(targetElement.getAttribute('data-page'))
+                        }
                     })
                 }
             })
