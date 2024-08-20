@@ -7,7 +7,7 @@ packages = ["streamlit_page_link_params"]
 
 [project]
 name = "streamlit-page-link-params"
-version = "0.3.0"
+version = "0.3.3"
 description = "An alternative to the official Streamlit page_link component that supports query parameters."
 authors = [
   {name = "Tongshengzhou", email = "tongshengzhou@gmail.com"}
@@ -27,3 +27,15 @@ readme = { file = "README.md", content-type = "text/markdown" }
 [project.urls]
 Homepage = "https://github.com/dancingpeanut/streamlit-page-link-params"
 Repository = "https://github.com/dancingpeanut/streamlit-page-link-params"
+
+[tool.poetry]
+name = "streamlit-page-link-params"
+version = "0.3.3"
+description = "An alternative to the official Streamlit page_link component that supports query parameters."
+authors = ["Thomson <tongshengzhou@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10.1"
+streamlit = "1.37.1"
+streamlit-js-callback = "1.0.2"
+streamlit-event-hook = "0.3.3"

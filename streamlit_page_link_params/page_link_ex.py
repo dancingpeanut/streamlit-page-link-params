@@ -119,7 +119,7 @@ def _listen_jump():
     jump_target = streamlit_js_callback("""
     function findParentWithClass(element, classNameFragment) {
         while (element) {
-            // 检查当前元素是否是 <div> 且 class 包含 "my"
+            // 检查当前元素是否是 <div> 且 class 包含 `classNameFragment`
             if (element.tagName.toUpperCase() === 'DIV' && element.className.includes(classNameFragment)) {
                 return element;
             }
@@ -131,29 +131,34 @@ def _listen_jump():
         }
         return null; // 如果没有找到匹配的元素，返回 null
     }
+    
+    window.parent.__page_link_ex_sendClick = function(e) {
+        if (window.__page_link_ex_hasClick === undefined || window.__page_link_ex_hasClick === false) {
+            window.__page_link_ex_hasClick = true
+            // console.log("click", e);
+            const targetElement = findParentWithClass(e.target, '{_CONTAINER_CLASS}');
+            // console.log("page element", targetElement.getAttribute('data-page'), targetElement)
+            sendMessage(targetElement.getAttribute('data-page'))
+        }
+    }
 
     const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
     (async function() {
-        for (let i=0; i<20; i++) {
-            window.parent.document.querySelectorAll('.page-link-d78avs').forEach((item) => {
+        for (let i=0; i<16; i++) {
+            window.parent.document.querySelectorAll('.{_CONTAINER_CLASS}').forEach((item) => {
                 if (item.getAttribute('data-listen') !== 'true') {
                     item.setAttribute('data-listen', 'true');
                     // console.log("add event", item);
-                    item.querySelector('a').addEventListener('click', (e) => {
-                        // console.log("click", e.target);
-                        const targetElement = findParentWithClass(e.target, 'page-link-d78avs');
-                        // console.log("page element", targetElement.getAttribute('data-page'), targetElement)
-                        sendMessage(targetElement.getAttribute('data-page'))
-                    })
+                    item.querySelector('a').setAttribute("onclick", "__page_link_ex_sendClick(event)")
                 }
             })
             await sleep(500)
         }
     })()
-    """, key=_JUMP_COMPONENT_KEY)
+    """.replace('{_CONTAINER_CLASS}', _CONTAINER_CLASS), key=_JUMP_COMPONENT_KEY)
     if jump_target:
         jump_data = json.loads(base64.b64decode(jump_target))
-        logging.info(f"Jump to page: `{jump_data}`")
+        logging.debug(f"Jump to page: `{jump_data}`")
         st.session_state[_SESSION_STATE_JUMP_DATA] = jump_data
         _JUMP_COMPONENT_KEY = f"{_SESSION_STATE_KEY}.{time.time()}"
         st.switch_page(jump_data["path"])
@@ -165,7 +170,7 @@ def _set_query_params(remove_jump_data=False):
         ctx = get_script_run_ctx()
         current_page_hash = str(ctx.pages_manager.get_current_page_script_hash())
         if current_page_hash == jump_data["hash"]:
-            logging.info(f"Jump by page link params, {jump_data}")
+            logging.debug(f"Jump by page link params, {jump_data}")
             st.query_params.from_dict(jump_data["params"])
         if remove_jump_data:
             del st.session_state[_SESSION_STATE_JUMP_DATA]
